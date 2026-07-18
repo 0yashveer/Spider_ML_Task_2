@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Medical Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5F8F8;
+    --surface:#FFFFFF;
+    --ink:#1B2430;
+    --ink-soft:#5A6B72;
+    --teal:#2A6F6F;
+    --teal-dark:#1E5252;
+    --rule:#DCE3E3;
+    --alert:#B3453D;
+    --alert-bg:#FBEEED;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    display:flex;
+    flex-direction:column;
+  }
+
+  header{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    padding:20px 28px;
+    border-bottom:1px solid var(--rule);
+    background:var(--surface);
+  }
+  header .mark{
+    width:34px;height:34px;
+    border-radius:8px;
+    background:var(--teal);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;
+    flex-shrink:0;
+  }
+  header h1{
+    font-family:'Source Serif 4',serif;
+    font-weight:600;
+    font-size:20px;
+    margin:0;
+  }
+  header .tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.04em;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    border:1px solid var(--rule);
+    padding:3px 8px;
+    border-radius:100px;
+  }
+
+  .layout{
+    flex:1;
+    display:grid;
+    grid-template-columns:1fr 300px;
+    max-width:1180px;
+    width:100%;
+    margin:0 auto;
+    gap:0;
+    min-height:0;
+  }
+  @media (max-width:860px){
+    .layout{grid-template-columns:1fr;}
+    .signals{display:none;}
+  }
+
+  /* ---- chat column ---- */
+  main{
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    border-right:1px solid var(--rule);
+  }
+  .disclaimer{
+    margin:16px 24px 0;
+    padding:10px 14px;
+    background:var(--alert-bg);
+    border:1px solid #EBC8C4;
+    border-radius:var(--radius);
+    font-size:12.5px;
+    color:var(--alert);
+    line-height:1.5;
+  }
+  .thread{
+    flex:1;
+    overflow-y:auto;
+    padding:20px 24px 8px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+  }
+  .msg{max-width:86%;}
+  .msg.user{align-self:flex-end;}
+  .msg.bot{align-self:flex-start;}
+  .msg .bubble{
+    padding:12px 16px;
+    border-radius:var(--radius);
+    line-height:1.55;
+    font-size:14.5px;
+    white-space:pre-wrap;
+  }
+  .msg.user .bubble{
+    background:var(--teal);
+    color:#fff;
+    border-bottom-right-radius:2px;
+  }
+  .msg.bot .bubble{
+    background:var(--surface);
+    border:1px solid var(--rule);
+    border-bottom-left-radius:2px;
+  }
+  .msg .role{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:5px;
+  }
+  .msg.user .role{text-align:right;}
+
+  .sources{
+    margin-top:8px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .source-chip{
+    border:1px solid var(--rule);
+    background:var(--surface);
+    border-radius:8px;
+    padding:8px 10px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .source-chip .src-head{
+    display:flex;
+    justify-content:space-between;
+    font-family:'IBM Plex Mono',monospace;
+    color:var(--teal-dark);
+    font-size:11px;
+  }
+  .source-chip .src-body{
+    display:none;
+    margin-top:6px;
+    color:var(--ink-soft);
+    line-height:1.5;
+  }
+  .source-chip.open .src-body{display:block;}
+
+  .typing{
+    align-self:flex-start;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+    padding:2px 4px;
+  }
+
+  form{
+    display:flex;
+    gap:10px;
+    padding:16px 24px 20px;
+    border-top:1px solid var(--rule);
+    background:var(--surface);
+  }
+  form input{
+    flex:1;
+    border:1px solid var(--rule);
+    border-radius:8px;
+    padding:11px 14px;
+    font-size:14px;
+    font-family:'Inter',sans-serif;
+  }
+  form input:focus{outline:2px solid var(--teal); outline-offset:1px;}
+  form button{
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:0 20px;
+    font-size:14px;
+    font-weight:500;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+  }
+  form button:hover{background:var(--teal-dark);}
+  form button:disabled{opacity:.5; cursor:default;}
+
+  /* ---- signal panel ---- */
+  .signals{
+    padding:22px 20px;
+    background:var(--surface);
+    overflow-y:auto;
+  }
+  .signals h2{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 4px;
+  }
+  .signals .sub{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-bottom:18px;
+    border-bottom:1px dashed var(--rule);
+    padding-bottom:14px;
+  }
+  .category{margin-bottom:16px;}
+  .category .cat-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color:var(--teal-dark);
+    margin-bottom:6px;
+  }
+  .pill-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .pill{
+    background:#EEF4F4;
+    color:var(--teal-dark);
+    border-radius:100px;
+    padding:4px 10px;
+    font-size:11.5px;
+  }
+  .empty-pill{
+    color:var(--ink-soft);
+    font-size:11.5px;
+    font-style:italic;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="mark">M</div>
+  <h1>MedBot</h1>
+  <span class="tag">Guideline-grounded</span>
+</header>
+
+<div class="layout">
+  <main>
+    <div class="disclaimer">
+      This tool retrieves information from ingested guidelines and Q&amp;A sources. It does not diagnose.
+      Always confirm anything medically important with a qualified healthcare professional.
+    </div>
+
+    <div class="thread" id="thread">
+      <div class="msg bot">
+        <div class="role">MedGuide</div>
+        <div class="bubble">Ask me a question about a symptom, condition, medication, or treatment from the ingested documents, and I'll answer using only what's in the knowledge base.</div>
+      </div>
+    </div>
+
+    <form id="chat-form">
+      <input id="chat-input" type="text" placeholder="e.g. What are the first-line treatments for hypertension?" autocomplete="off" />
+      <button type="submit" id="send-btn">Send</button>
+    </form>
+  </main>
+
+  <aside class="signals">
+    <h2>Detected signals</h2>
+    <div class="sub">Entities recognized in your last question</div>
+    <div id="signal-body">
+      <div class="category">
+        <div class="cat-label">Symptoms</div>
+        <div class="pill-row"><span class="empty-pill">—</span></div>
+      </div>
+      <div class="category">
+        <div class="cat-label">Conditions</div>
+        <div class="pill-row"><span class="empty-pill">—</span></div>
+      </div>
+      <div class="category">
+        <div class="cat-label">Medications</div>
+        <div class="pill-row"><span class="empty-pill">—</span></div>
+      </div>
+      <div class="category">
+        <div class="cat-label">Treatments</div>
+        <div class="pill-row"><span class="empty-pill">—</span></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+const thread = document.getElementById('thread');
+const form = document.getElementById('chat-form');
+const input = document.getElementById('chat-input');
+const sendBtn = document.getElementById('send-btn');
+const signalBody = document.getElementById('signal-body');
+
+let conversationHistory = [];
+const MAX_HISTORY_TURNS = 4;
+
+function scrollToBottom(){
+  thread.scrollTop = thread.scrollHeight;
+}
+
+function addMessage(role, text){
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+  wrap.innerHTML = `<div class="role">${role === 'user' ? 'You' : 'MedGuide'}</div><div class="bubble"></div>`;
+  wrap.querySelector('.bubble').textContent = text;
+  thread.appendChild(wrap);
+  scrollToBottom();
+  return wrap;
+}
+
+function addSources(container, sources){
+  if(!sources || !sources.length) return;
+  const box = document.createElement('div');
+  box.className = 'sources';
+  sources.forEach((s, i) => {
+    const meta = s.metadata || {};
+    const chip = document.createElement('div');
+    chip.className = 'source-chip';
+    const label = meta.type === 'guidelines'
+      ? `${meta.file_name || 'doc'} · p.${meta.page_number || '?'}`
+      : `${meta.file_name || 'qa'} · row ${meta.row_num || '?'}`;
+    chip.innerHTML = `
+      <div class="src-head"><span>[Source ${i+1}] ${label}</span><span>score ${s.score}</span></div>
+      <div class="src-body"></div>`;
+    chip.querySelector('.src-body').textContent = s.text;
+    chip.addEventListener('click', () => chip.classList.toggle('open'));
+    box.appendChild(chip);
+  });
+  container.appendChild(box);
+}
+
+function renderPills(rowEl, items){
+  rowEl.innerHTML = '';
+  if(!items || !items.length){
+    rowEl.innerHTML = '<span class="empty-pill">—</span>';
+    return;
+  }
+  items.forEach(item => {
+    const pill = document.createElement('span');
+    pill.className = 'pill';
+    pill.textContent = item;
+    rowEl.appendChild(pill);
+  });
+}
+
+function updateSignals(entities){
+  const rows = signalBody.querySelectorAll('.pill-row');
+  const order = ['symptoms', 'conditions', 'medications', 'treatments'];
+  order.forEach((key, idx) => renderPills(rows[idx], entities ? entities[key] : []));
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const message = input.value.trim();
+  if(!message) return;
+
+  addMessage('user', message);
+  input.value = '';
+  sendBtn.disabled = true;
+
+  const typing = document.createElement('div');
+  typing.className = 'typing';
+  typing.textContent = 'MedGuide is thinking…';
+  thread.appendChild(typing);
+  scrollToBottom();
+
+  try{
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message,history: conversationHistory })
+    });
+    const data = await res.json();
+    typing.remove();
+
+    if(data.error){
+      addMessage('bot', 'Error: ' + data.error);
+      return;
+    }
+
+    const botMsg = addMessage('bot', data.answer || 'No answer returned.');
+    addSources(botMsg, data.sources);
+    updateSignals(data.detected_entities);
+    conversationHistory.push({role: 'user', content: message});
+    conversationHistory.push({role: 'assistant', content: data.answer || ''});
+    if(conversationHistory.length > MAX_HISTORY_TURNS * 2){
+      conversationHistory = conversationHistory.slice(-MAX_HISTORY_TURNS * 2);
+    }
+  }catch(err){
+    typing.remove();
+    addMessage('bot', 'Network error — is the Flask server running?');
+  }finally{
+    sendBtn.disabled = false;
+    input.focus();
+  }
+});
+</script>
+
+</body>
+</html>
