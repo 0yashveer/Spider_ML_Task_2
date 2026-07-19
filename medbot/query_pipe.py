@@ -3,14 +3,10 @@ import json
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-#reusing earlier defined functions
-
 from ingest_fixed import(
     nlp, extract_entities, classify_entities,
     entities_to_chromadb, extract_abbreviations
 )
-
-# config's
 
 CHROMA_PATH = "./chroma_db"
 GUIDELINES_COLLECTION = "ml_chunks"
@@ -33,7 +29,6 @@ def analyze_query(query):
 
     return entities, classified, fields
 
-"""advanced metadata filter for extracting through substring """
 def where_filter(classified):
     metadataCount=[]
 
@@ -52,10 +47,8 @@ def where_filter(classified):
     if len(metadataCount)==1:
         return metadataCount[0]
 
-    return {"$or":metadataCount} # chromadb doesn't accepts a list object therefore using "or" filter
+    return {"$or":metadataCount}
 
-
-#        Doing keywords search in the already filteered dataset
 
 def hard_filter(collection, query_embedding, where_clause, top_k=15):
 
@@ -76,7 +69,6 @@ def fallback_semantic_search(collection, query_embedding, top_k):
         n_results=top_k
     )
 
-#we will use this one function to segregate out the probabale candidates mentioning relevant keywords
 def retrieve_candidates(collection, query_embedding, classified, top_k=SEMANTIC_TOP_K):
     where_clause = where_filter(classified)
 
@@ -87,8 +79,6 @@ def retrieve_candidates(collection, query_embedding, classified, top_k=SEMANTIC_
     fallback_result = fallback_semantic_search(collection, query_embedding, top_k)
     return fallback_result, True
 
-
-#     re ranking cndidates via metadata overlap with query
 
 def metadata_overlap_score(query_classified, chunk_metadata):
     score=0
@@ -109,9 +99,9 @@ def rerank(result, query_classified, final_top_n=FINAL_TOP_N):
 
     scored=[]
     for chunk_id, doc, meta, distance in zip(ids, documents, metadatas, distances):
-        overlap = metadata_overlap_score(query_classified, meta) #for metadata overlap score
+        overlap = metadata_overlap_score(query_classified, meta)
 
-        similarity = 1.0/(1.0 + distance)#higher similarity --> less distance
+        similarity = 1.0/(1.0 + distance)
 
         combined = (similarity*0.6) + (overlap/4)*0.4
         scored.append({
@@ -126,8 +116,6 @@ def rerank(result, query_classified, final_top_n=FINAL_TOP_N):
     scored.sort(key=lambda x:x["combined_score"], reverse=True)
     return scored[:final_top_n]
 
-#------------------------------------------------------------------
-#   joining different parts of a chunk to pass to llm
 def context(top_chunks):
     final=[]
     for i, chunk in enumerate(top_chunks, start=1):
@@ -147,8 +135,6 @@ def context(top_chunks):
         )
     return final
 
-#-------------------------------------------------------------
-# combining different history of prompts into one 
 def format_history(history):
     if not history:
         return ""
@@ -159,8 +145,6 @@ def format_history(history):
     return "\n".join(lines)
 
 
-
-#       prompt for llm
 def prompt_builder(user_query, top_chunks, history=None):
     context_block = context(top_chunks)
     history_block = format_history(history)
@@ -188,15 +172,35 @@ USER_QUESTION: {user_query}
 ANSWER (short, 2-4 sentences):"""
     return prompt
 
+def compute_confidence(ranked_chunks, used_fallback, classified):
+    if not ranked_chunks:
+        return 0.0
 
-#-----------flow----------------
+    top = ranked_chunks[0]
+    top_similarity = 1.0 / (1.0 + top["distance"])
+    top_overlap_ratio = top["overlap"] / 4
+
+    base = (top_similarity * 0.6) + (top_overlap_ratio * 0.4)
+
+    if used_fallback:
+        base *= 0.85
+
+    entity_count = sum(len(v) for v in classified.values())
+    if entity_count == 0:
+        base *= 0.85
+
+    if len(ranked_chunks) > 1:
+        gap = top["combined_score"] - ranked_chunks[1]["combined_score"]
+        if gap < 0.05:
+            base *= 0.9
+
+    return round(min(max(base, 0.0), 1.0), 3)
 
 def answer_query(user_query, collection_name=QA_COLLECTION, history=None):
     embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
     client = chromadb.PersistentClient(path=CHROMA_PATH)
     collection = client.get_or_create_collection(name=collection_name)
 
-    # Step 1
     entities, classified, query_field = analyze_query(user_query)
     print("Query entities detected:")
     print(f"  symptoms : {classified['symptoms']}")
@@ -204,23 +208,25 @@ def answer_query(user_query, collection_name=QA_COLLECTION, history=None):
     print(f"  medications : {classified['medications']}")
     print(f"  treatments : {classified['treatments']}")
 
-    # Step 2
     query_embedding = embedding_model.encode(user_query).tolist()
     result, used_fallback = retrieve_candidates(collection, query_embedding, classified)
 
     if not result['ids'][0]:
         return {
             "answer": "No relevant info found in knowledge base for this.",
+            "confidence": 0.0,
             "sources": [],
             "detected_entities": classified
         }
 
     ranked_chunks = rerank(result, classified)
+    confidence = compute_confidence(ranked_chunks, used_fallback, classified)
     prompt = prompt_builder(user_query, ranked_chunks, history = history)
     answer = ollama_call(prompt)
 
     return {
         "answer": answer or "The model did not return a response.",
+        "confidence": confidence,
         "sources": [
             {
                 "metadata": c["metadata"],

@@ -131,6 +131,7 @@ def extract_entities(text):
     doc = nlp(text)
     seen = set()
     entities =[]
+    print("Detected spans:", [(ent.text, ent.label_) for ent in doc.ents])
 
     for ent in doc.ents:
         surface = ent.text.lower().strip()
@@ -298,7 +299,6 @@ def main():
     chunk_id = 0
 
     for doc in documents:
-        
         text = doc.page_content.strip()
         if not text:
             continue
